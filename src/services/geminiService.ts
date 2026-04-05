@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { QuestionPaper, Difficulty, BloomLevel, QuestionType } from "../types";
 
-const apiKey = process.env.GEMINI_API_KEY || (import.meta.env.VITE_GEMINI_API_KEY as string) || "";
+const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
 const ai = new GoogleGenAI({ apiKey });
 
 export async function generateQuestionPaper(params: {

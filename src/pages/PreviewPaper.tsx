@@ -26,9 +26,36 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
   const [chatMessage, setChatMessage] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
+  const [paperScale, setPaperScale] = useState(1);
+  
   const paperRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const updateScale = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.offsetWidth;
+        const targetWidth = 800; // Fixed width for paper format
+        if (containerWidth < targetWidth) {
+          setPaperScale(containerWidth / targetWidth);
+        } else {
+          setPaperScale(1);
+        }
+      }
+    };
+
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    // Initial delay to ensure layout is ready
+    const timer = setTimeout(updateScale, 500);
+    
+    return () => {
+      window.removeEventListener('resize', updateScale);
+      clearTimeout(timer);
+    };
+  }, [paper, showChat]);
 
   useEffect(() => {
     if (chatEndRef.current) {
@@ -66,58 +93,105 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
   const handleDownloadPDF = async () => {
     if (!paperRef.current || !paper) return;
     setExporting(true);
-    console.log('Starting PDF export...');
+    
     try {
       const element = paperRef.current;
       
-      // Ensure we are at the top of the page for capture
-      window.scrollTo(0, 0);
-      
-      // Small delay to ensure any layout shifts are settled
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      console.log('Capturing canvas...');
+      // Force standard colors and layout for capture
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
-        logging: true,
+        logging: false,
         backgroundColor: '#ffffff',
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
+        width: 800, // Force fixed width for paper format
+        windowWidth: 800,
         onclone: (clonedDoc) => {
-          // Force standard colors to avoid oklch issues during capture
+          const clonedPaper = clonedDoc.getElementById('paper-content-inner');
+          if (clonedPaper) {
+            clonedPaper.style.width = '800px';
+            clonedPaper.style.transform = 'none';
+            clonedPaper.style.margin = '0';
+            clonedPaper.style.boxShadow = 'none';
+          }
+          
+          // Aggressively replace oklch/oklab in all style tags to prevent html2canvas parsing errors
+          const styleTags = Array.from(clonedDoc.getElementsByTagName('style'));
+          styleTags.forEach(tag => {
+            if (tag.innerHTML.includes('oklch') || tag.innerHTML.includes('oklab')) {
+              tag.innerHTML = tag.innerHTML
+                .replace(/oklch\([^)]+\)/g, '#000000')
+                .replace(/oklab\([^)]+\)/g, '#000000');
+            }
+          });
+
+          // Also check inline styles
+          const allElements = Array.from(clonedDoc.getElementsByTagName('*')) as HTMLElement[];
+          allElements.forEach(el => {
+            const styleAttr = el.getAttribute('style');
+            if (styleAttr && (styleAttr.includes('oklch') || styleAttr.includes('oklab'))) {
+              el.setAttribute('style', styleAttr
+                .replace(/oklch\([^)]+\)/g, '#000000')
+                .replace(/oklab\([^)]+\)/g, '#000000'));
+            }
+          });
+          
+          // Force standard colors to avoid oklch/oklab issues during capture
+          // Tailwind v4 uses oklch/oklab by default which html2canvas doesn't support
           const style = clonedDoc.createElement('style');
           style.innerHTML = `
             * {
               border-color: #000000 !important;
               color: #000000 !important;
+              fill: #000000 !important;
+              stroke: #000000 !important;
               background-color: transparent !important;
+              background-image: none !important;
+              box-shadow: none !important;
+              text-shadow: none !important;
+              --tw-ring-color: transparent !important;
+              --tw-shadow: none !important;
+              --tw-shadow-colored: none !important;
+              --tw-outline-style: none !important;
+              --tw-gradient-from: transparent !important;
+              --tw-gradient-to: transparent !important;
+              --tw-gradient-stops: none !important;
             }
-            .bg-white, [style*="background-color: #ffffff"] {
+            img {
+              background-image: none !important;
+            }
+            .bg-white, [style*="background-color: #ffffff"], [style*="background-color: white"] {
               background-color: #ffffff !important;
             }
-            [style*="background-color: #f3f4f6"] {
+            .bg-gray-50, .bg-gray-100, [style*="background-color: #f3f4f6"], [style*="background-color: #f9fafb"] {
               background-color: #f3f4f6 !important;
+            }
+            /* Strip out any oklch/oklab variables that might be present */
+            :root {
+              --color-gray-50: #f9fafb !important;
+              --color-gray-100: #f3f4f6 !important;
+              --color-gray-200: #e5e7eb !important;
+              --color-gray-300: #d1d5db !important;
+              --color-gray-400: #9ca3af !important;
+              --color-gray-500: #6b7280 !important;
+              --color-gray-600: #4b5563 !important;
+              --color-gray-700: #374151 !important;
+              --color-gray-800: #1f2937 !important;
+              --color-gray-900: #111827 !important;
             }
           `;
           clonedDoc.head.appendChild(style);
         }
       });
-      console.log('Canvas captured successfully');
       
       const imgData = canvas.toDataURL('image/png');
-      if (!imgData || imgData === 'data:,') {
-        throw new Error('Canvas capture resulted in empty image.');
-      }
-
+      
       // @ts-ignore - jsPDF versioning can be tricky
       const pdf = new (jsPDF.default || jsPDF)('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       
-      // Define margins and content area
-      const margin = 15; // 15mm margin
-      const footerSpace = 15; // 15mm space for footer
+      const margin = 10; 
+      const footerSpace = 15;
       const contentWidth = pdfWidth - (2 * margin);
       const contentHeightPerPage = pageHeight - (2 * margin) - footerSpace;
       
@@ -135,21 +209,18 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
           pdf.addPage();
         }
         
-        // Add the image slice (shifted)
         pdf.addImage(imgData, 'PNG', margin, margin - position, contentWidth, totalContentHeight);
         
-        // Draw white rectangles to cover top and bottom margins for a clean "gap" look
+        // Cover margins
         pdf.setFillColor(255, 255, 255);
-        pdf.rect(0, 0, pdfWidth, margin, 'F'); // Top margin cover
-        pdf.rect(0, pageHeight - margin - footerSpace, pdfWidth, margin + footerSpace, 'F'); // Bottom margin + footer cover
+        pdf.rect(0, 0, pdfWidth, margin, 'F');
+        pdf.rect(0, pageHeight - margin - footerSpace, pdfWidth, margin + footerSpace, 'F');
         
-        // Add Page Number in the center
         pdf.setFont("serif", "normal");
         pdf.setFontSize(10);
         pdf.setTextColor(0, 0, 0);
         pdf.text(String(pageNumber), pdfWidth / 2, pageHeight - margin - 5, { align: 'center' });
         
-        // Add P.T.O if there's more content
         if (heightLeft > contentHeightPerPage) {
           pdf.setFont("serif", "bold");
           pdf.text('P.T.O', pdfWidth - margin, pageHeight - margin - 5, { align: 'right' });
@@ -160,12 +231,10 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
         pageNumber++;
       }
 
-      console.log('Saving PDF...');
-      pdf.save(`${paper.title.replace(/\s+/g, '_')}_${paper.totalMarks}Marks.pdf`);
-      console.log('PDF saved successfully');
+      pdf.save(`${paper.title.replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
       console.error('PDF export error:', err);
-      alert('Failed to generate PDF. Error: ' + (err instanceof Error ? err.message : String(err)));
+      alert('Failed to generate PDF.');
     } finally {
       setExporting(false);
     }
@@ -210,7 +279,7 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
   const PCE_LOGO = "https://pce.ac.in/wp-content/uploads/2020/01/logo.png";
 
   const Template60 = ({ paper }: { paper: QuestionPaper }) => (
-    <div className="p-8 md:p-12 font-serif" style={{ minHeight: '297mm', backgroundColor: '#ffffff', color: '#000000' }}>
+    <div className="p-12 font-serif" style={{ minHeight: '297mm', width: '800px', backgroundColor: '#ffffff', color: '#000000' }}>
       {/* Header Template 60 */}
       <div className="flex items-center justify-between p-4 mb-0" style={{ border: '2px solid #000000', color: '#000000' }}>
         <div className="w-24 h-24 flex items-center justify-center pr-4 mr-4" style={{ borderRight: '2px solid #000000' }}>
@@ -223,11 +292,11 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
           />
         </div>
         <div className="flex-1 text-center">
-          <h2 className="text-xl font-bold uppercase" style={{ color: '#000000' }}>{paper.collegeName || "PILLAI COLLEGE OF ENGINEERING, NEW PANVEL"}</h2>
-          <p className="text-sm font-bold" style={{ color: '#000000' }}>(Autonomous) (Accredited 'A+' by NAAC)</p>
-          <h3 className="text-lg font-bold uppercase mt-1" style={{ color: '#000000' }}>{paper.examType || "END SEMESTER EXAMINATION"}</h3>
+          <h2 className="text-2xl font-bold uppercase leading-tight tracking-tight" style={{ color: '#000000' }}>{paper.collegeName || "PILLAI COLLEGE OF ENGINEERING"}</h2>
+          <p className="text-sm font-bold mt-1" style={{ color: '#000000' }}>(Autonomous) (Accredited 'A+' by NAAC)</p>
+          <h3 className="text-lg font-bold uppercase mt-2" style={{ color: '#000000' }}>{paper.examType || "END SEMESTER EXAMINATION"}</h3>
           <h3 className="text-lg font-bold uppercase" style={{ color: '#000000' }}>{paper.monthYear || "MAY 2025"}</h3>
-          <p className="text-sm font-bold uppercase mt-1" style={{ color: '#000000' }}>BRANCH: {paper.branch || "Computer Engineering"}</p>
+          <p className="text-sm font-bold uppercase mt-2" style={{ color: '#000000' }}>BRANCH: {paper.branch || "Computer Engineering"}</p>
         </div>
         <div className="w-32 text-right">
           <p className="text-xs font-bold" style={{ color: '#000000' }}>QP CODE 243592</p>
@@ -318,7 +387,7 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
   );
 
   const Template40 = ({ paper }: { paper: QuestionPaper }) => (
-    <div className="p-8 md:p-12 font-serif" style={{ minHeight: '297mm', backgroundColor: '#ffffff', color: '#000000' }}>
+    <div className="p-12 font-serif" style={{ minHeight: '297mm', width: '800px', backgroundColor: '#ffffff', color: '#000000' }}>
       {/* Header Template 40 */}
       <div className="mb-6" style={{ border: '2px solid #000000', padding: '16px', color: '#000000' }}>
         <div className="flex items-center justify-center gap-6 mb-4">
@@ -468,13 +537,23 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-sm">
-          <div ref={paperRef} style={{ backgroundColor: '#ffffff' }}>
-            {paper.totalMarks === 60 ? (
-              <Template60 paper={paper} />
-            ) : (
-              <Template40 paper={paper} />
-            )}
+        <div ref={containerRef} className="overflow-hidden rounded-2xl bg-gray-100/50 p-4 md:p-8 min-h-[800px] flex justify-center border border-gray-200/50 shadow-inner">
+          <div 
+            style={{ 
+              width: '800px',
+              transform: `scale(${paperScale})`,
+              transformOrigin: 'top center',
+              height: `${1131 * paperScale}px`, // A4 aspect ratio height
+              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
+            <div ref={paperRef} id="paper-content-inner" className="shadow-2xl ring-1 ring-black/5">
+              {paper.totalMarks === 60 ? (
+                <Template60 paper={paper} />
+              ) : (
+                <Template40 paper={paper} />
+              )}
+            </div>
           </div>
         </div>
       </div>
