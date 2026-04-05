@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  
+  --color-brand-purple: #9333ea;
+  --color-brand-pink: #db2777;
+  --color-brand-blue: #2563eb;
+  
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+}
+
+@layer base {
+  body {
+    @apply font-sans text-gray-900 antialiased bg-[#fcfcfd];
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .btn-gradient {
+    @apply bg-gradient-to-r from-brand-purple to-brand-pink text-white font-semibold px-8 py-4 rounded-full hover:shadow-lg hover:shadow-brand-purple/20 transition-all duration-300 active:scale-95;
+  }
+  
+  .btn-dark {
+    @apply bg-[#0f172a] text-white font-semibold px-8 py-4 rounded-full hover:bg-black transition-all duration-300 active:scale-95;
+  }
+  
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+  
+  .soft-card {
+    @apply bg-white rounded-4xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.08)] transition-all duration-500;
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-purple via-brand-pink to-brand-blue;
+  }
+}
+
+.blob {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: linear-gradient(180deg, rgba(147, 51, 234, 0.2) 0%, rgba(219, 39, 119, 0.2) 100%);
+  filter: blur(80px);
+  border-radius: 50%;
+  z-index: -1;
+}

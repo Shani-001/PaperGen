@@ -1,0 +1,5 @@
+{
+  "name": "AI Question Paper Generator",
+  "description": "An AI-powered system to automatically generate structured question papers based on syllabus, difficulty, and Bloom's Taxonomy.",
+  "requestFramePermissions": []
+}

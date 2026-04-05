@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user-specific settings and profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique identifier for the user." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created." }
+      },
+      "required": ["uid", "email"]
+    },
+    "QuestionPaper": {
+      "title": "Question Paper",
+      "description": "Represents a generated question paper.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID of the paper." },
+        "userId": { "type": "string", "description": "ID of the user who generated it." },
+        "title": { "type": "string", "description": "Title of the question paper." },
+        "syllabus": { "type": "string", "description": "The syllabus text used for generation." },
+        "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Hard"] },
+        "bloomLevels": { "type": "array", "items": { "type": "string" } },
+        "questionTypes": { "type": "array", "items": { "type": "string" } },
+        "totalMarks": { "type": "number" },
+        "numQuestions": { "type": "number" },
+        "sections": { "type": "array", "items": { "$ref": "Section" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "sections"]
+    },
+    "Section": {
+      "title": "Section",
+      "description": "A section within a question paper.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "instructions": { "type": "string" },
+        "questions": { "type": "array", "items": { "$ref": "Question" } }
+      }
+    },
+    "Question": {
+      "title": "Question",
+      "description": "A single question in the paper.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" }, "description": "For MCQs" },
+        "correctAnswer": { "type": "string" },
+        "explanation": { "type": "string" },
+        "marks": { "type": "number" },
+        "topic": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "bloomLevel": { "type": "string" },
+        "type": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile documents."
+    },
+    "/questionPapers/{paperId}": {
+      "schema": "QuestionPaper",
+      "description": "Generated question papers."
+    }
+  }
+}
