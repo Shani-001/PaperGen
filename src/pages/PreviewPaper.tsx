@@ -537,17 +537,18 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
           </div>
         </div>
 
-        <div ref={containerRef} className="overflow-hidden rounded-2xl bg-gray-100/50 p-4 md:p-8 min-h-[800px] flex justify-center border border-gray-200/50 shadow-inner">
+        <div ref={containerRef} className="overflow-y-auto rounded-2xl bg-gray-100/50 p-4 md:p-8 max-h-[calc(100vh-120px)] min-h-[600px] flex justify-center border border-gray-200/50 shadow-inner custom-scrollbar">
           <div 
             style={{ 
               width: '800px',
               transform: `scale(${paperScale})`,
               transformOrigin: 'top center',
-              height: `${1131 * paperScale}px`, // A4 aspect ratio height
-              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+              height: 'auto',
+              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              marginBottom: `${(1 - paperScale) * -800}px` // More stable compensation
             }}
           >
-            <div ref={paperRef} id="paper-content-inner" className="shadow-2xl ring-1 ring-black/5">
+            <div ref={paperRef} id="paper-content-inner" className="shadow-2xl ring-1 ring-black/5 bg-white mb-20">
               {paper.totalMarks === 60 ? (
                 <Template60 paper={paper} />
               ) : (
