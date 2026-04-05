@@ -124,6 +124,7 @@ export async function generateQuestionPaper(params: {
                       type: Type.OBJECT,
                       properties: {
                         text: { type: Type.STRING },
+                        imageUrl: { type: Type.STRING, description: "Optional URL for a diagram or image related to the question." },
                         options: { type: Type.ARRAY, items: { type: Type.STRING } },
                         correctAnswer: { type: Type.STRING },
                         explanation: { type: Type.STRING },
@@ -172,13 +173,15 @@ export async function generateQuestionPaper(params: {
 
 export async function modifyQuestionPaper(
   currentPaper: QuestionPaper,
-  prompt: string
+  prompt: string,
+  image?: { data: string; mimeType: string }
 ): Promise<QuestionPaper> {
-  // Use a faster model for the chatbot assistant to provide quick responses
-  const model = "gemini-3.1-flash-lite-preview";
+  // Use a capable model for multimodal processing
+  const model = image ? "gemini-3-flash-preview" : "gemini-3.1-flash-lite-preview";
   
   const systemInstruction = `
     Modify the existing question paper based on the request.
+    If an image is provided, it might contain a diagram, a table, or a handwritten question that needs to be incorporated into the paper.
     Return the ENTIRE modified question paper object in the same JSON format.
     
     Current Paper:
@@ -189,14 +192,24 @@ export async function modifyQuestionPaper(
     
     Guidelines:
     - Update marks, questions, difficulty, or metadata as requested.
+    - If the user provides an image, analyze it and use its content as requested (e.g., "add this diagram to Q1" or "create a question based on this image").
+    - Be extremely faithful to the content of the provided image. If it's a diagram, ensure the question accurately reflects it.
+    - If you want to include the user's provided image as a diagram in a question, set the "imageUrl" field of that question to "USER_IMAGE".
     - Ensure total marks consistency.
     - Return ONLY the JSON object.
   `;
 
+  const contents: any[] = [{ text: systemInstruction }];
+  if (image) {
+    contents.push({
+      inlineData: image
+    });
+  }
+
   try {
     const response = await ai.models.generateContent({
       model,
-      contents: [{ parts: [{ text: systemInstruction }] }],
+      contents: [{ parts: contents }],
       config: {
         responseMimeType: "application/json",
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
@@ -233,6 +246,7 @@ export async function modifyQuestionPaper(
                       type: Type.OBJECT,
                       properties: {
                         text: { type: Type.STRING },
+                        imageUrl: { type: Type.STRING, description: "Use 'USER_IMAGE' to include the uploaded image as a diagram." },
                         options: { type: Type.ARRAY, items: { type: Type.STRING } },
                         correctAnswer: { type: Type.STRING },
                         explanation: { type: Type.STRING },

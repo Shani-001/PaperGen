@@ -5,6 +5,7 @@ export type QuestionType = 'MCQ' | 'Descriptive' | 'Case-based';
 export interface Question {
   id?: string;
   text: string;
+  imageUrl?: string; // Support for diagrams/images
   options?: string[];
   correctAnswer?: string;
   explanation?: string;

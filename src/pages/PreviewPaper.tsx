@@ -4,7 +4,7 @@ import { User } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { QuestionPaper } from '../types';
-import { Download, FileText, ChevronLeft, Eye, EyeOff, Loader2, Clock, Brain, CheckCircle2, MessageSquare, Send, X, Sparkles } from 'lucide-react';
+import { Download, FileText, ChevronLeft, Eye, EyeOff, Loader2, Clock, Brain, CheckCircle2, MessageSquare, Send, X, Sparkles, Image as ImageIcon } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { motion, AnimatePresence } from 'motion/react';
@@ -27,11 +27,34 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
   const [paperScale, setPaperScale] = useState(1);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   
   const paperRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   useEffect(() => {
     const updateScale = () => {
@@ -95,23 +118,36 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
     setExporting(true);
     
     try {
+      // Temporarily disable scaling for clean capture
+      const originalScale = paperScale;
+      setPaperScale(1);
+      
+      // Wait for the DOM to update and ensure images are loaded
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const element = paperRef.current;
       
-      // Force standard colors and layout for capture
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: 800, // Force fixed width for paper format
+        width: 800,
         windowWidth: 800,
         onclone: (clonedDoc) => {
+          // Force the body width to match the paper width for accurate capture
+          clonedDoc.body.style.width = '800px';
+          clonedDoc.body.style.overflow = 'visible';
+          
           const clonedPaper = clonedDoc.getElementById('paper-content-inner');
           if (clonedPaper) {
             clonedPaper.style.width = '800px';
             clonedPaper.style.transform = 'none';
             clonedPaper.style.margin = '0';
             clonedPaper.style.boxShadow = 'none';
+            clonedPaper.style.position = 'relative';
+            clonedPaper.style.left = '0';
+            clonedPaper.style.top = '0';
           }
           
           // Aggressively replace oklch/oklab in all style tags to prevent html2canvas parsing errors
@@ -139,12 +175,25 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
           // Tailwind v4 uses oklch/oklab by default which html2canvas doesn't support
           const style = clonedDoc.createElement('style');
           style.innerHTML = `
+            :root {
+              --color-white: #ffffff !important;
+              --color-black: #000000 !important;
+              --color-gray-50: #f9fafb !important;
+              --color-gray-100: #f3f4f6 !important;
+              --color-gray-200: #e5e7eb !important;
+              --color-gray-300: #d1d5db !important;
+              --color-gray-400: #9ca3af !important;
+              --color-gray-500: #6b7280 !important;
+              --color-gray-600: #4b5563 !important;
+              --color-gray-700: #374151 !important;
+              --color-gray-800: #1f2937 !important;
+              --color-gray-900: #111827 !important;
+            }
             * {
               border-color: #000000 !important;
               color: #000000 !important;
               fill: #000000 !important;
               stroke: #000000 !important;
-              background-color: transparent !important;
               background-image: none !important;
               box-shadow: none !important;
               text-shadow: none !important;
@@ -165,23 +214,18 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
             .bg-gray-50, .bg-gray-100, [style*="background-color: #f3f4f6"], [style*="background-color: #f9fafb"] {
               background-color: #f3f4f6 !important;
             }
-            /* Strip out any oklch/oklab variables that might be present */
-            :root {
-              --color-gray-50: #f9fafb !important;
-              --color-gray-100: #f3f4f6 !important;
-              --color-gray-200: #e5e7eb !important;
-              --color-gray-300: #d1d5db !important;
-              --color-gray-400: #9ca3af !important;
-              --color-gray-500: #6b7280 !important;
-              --color-gray-600: #4b5563 !important;
-              --color-gray-700: #374151 !important;
-              --color-gray-800: #1f2937 !important;
-              --color-gray-900: #111827 !important;
-            }
+            /* Fix flex layout issues in html2canvas */
+            .flex { display: flex !important; }
+            .justify-between { justify-content: space-between !important; }
+            .items-center { align-items: center !important; }
+            .flex-1 { flex: 1 1 0% !important; }
           `;
           clonedDoc.head.appendChild(style);
         }
       });
+      
+      // Restore scale
+      setPaperScale(originalScale);
       
       const imgData = canvas.toDataURL('image/png');
       
@@ -242,15 +286,44 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
 
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatMessage.trim() || !paper || chatLoading) return;
+    if ((!chatMessage.trim() && !selectedImage) || !paper || chatLoading) return;
 
     const userPrompt = chatMessage;
-    setChatHistory(prev => [...prev, { role: 'user', text: userPrompt }]);
+    const currentImage = selectedImage;
+    const currentImagePreview = imagePreview;
+    
+    setChatHistory(prev => [...prev, { 
+      role: 'user', 
+      text: userPrompt || (currentImage ? "Uploaded an image" : "") 
+    }]);
+    
     setChatMessage('');
+    clearImage();
     setChatLoading(true);
 
     try {
-      const modifiedPaper = await modifyQuestionPaper(paper, userPrompt);
+      let imagePayload;
+      if (currentImage && currentImagePreview) {
+        const base64Data = currentImagePreview.split(',')[1];
+        imagePayload = {
+          data: base64Data,
+          mimeType: currentImage.type
+        };
+      }
+
+      const modifiedPaper = await modifyQuestionPaper(paper, userPrompt, imagePayload);
+      
+      // Replace USER_IMAGE placeholder with actual base64 data
+      if (currentImagePreview) {
+        modifiedPaper.sections.forEach(section => {
+          section.questions.forEach(q => {
+            if (q.imageUrl === 'USER_IMAGE') {
+              q.imageUrl = currentImagePreview;
+            }
+          });
+        });
+      }
+
       setPaper(modifiedPaper);
       
       if (id) {
@@ -267,7 +340,7 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
         await updateDoc(docRef, paperToSave);
       }
 
-      setChatHistory(prev => [...prev, { role: 'ai', text: 'I have updated the question paper as requested. You can see the changes in the preview.' }]);
+      setChatHistory(prev => [...prev, { role: 'ai', text: 'I have updated the question paper based on your request and the image provided. You can see the changes in the preview.' }]);
     } catch (err) {
       console.error('Chat error:', err);
       setChatHistory(prev => [...prev, { role: 'ai', text: 'Sorry, I encountered an error while trying to modify the paper. Please try again.' }]);
@@ -281,8 +354,8 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
   const Template60 = ({ paper }: { paper: QuestionPaper }) => (
     <div className="p-12 font-serif" style={{ minHeight: '297mm', width: '800px', backgroundColor: '#ffffff', color: '#000000' }}>
       {/* Header Template 60 */}
-      <div className="flex items-center justify-between p-4 mb-0" style={{ border: '2px solid #000000', color: '#000000' }}>
-        <div className="w-24 h-24 flex items-center justify-center pr-4 mr-4" style={{ borderRight: '2px solid #000000' }}>
+      <div className="flex items-center justify-between p-4 mb-0" style={{ border: '2px solid #000000', color: '#000000', width: '100%' }}>
+        <div className="w-24 h-24 flex-shrink-0 flex items-center justify-center pr-4 mr-4" style={{ borderRight: '2px solid #000000' }}>
           <img 
             src={PCE_LOGO} 
             alt="PCE Logo" 
@@ -291,14 +364,14 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
             crossOrigin="anonymous"
           />
         </div>
-        <div className="flex-1 text-center">
+        <div className="flex-grow text-center px-4">
           <h2 className="text-2xl font-bold uppercase leading-tight tracking-tight" style={{ color: '#000000' }}>{paper.collegeName || "PILLAI COLLEGE OF ENGINEERING"}</h2>
           <p className="text-sm font-bold mt-1" style={{ color: '#000000' }}>(Autonomous) (Accredited 'A+' by NAAC)</p>
           <h3 className="text-lg font-bold uppercase mt-2" style={{ color: '#000000' }}>{paper.examType || "END SEMESTER EXAMINATION"}</h3>
           <h3 className="text-lg font-bold uppercase" style={{ color: '#000000' }}>{paper.monthYear || "MAY 2025"}</h3>
           <p className="text-sm font-bold uppercase mt-2" style={{ color: '#000000' }}>BRANCH: {paper.branch || "Computer Engineering"}</p>
         </div>
-        <div className="w-32 text-right">
+        <div className="w-32 flex-shrink-0 text-right">
           <p className="text-xs font-bold" style={{ color: '#000000' }}>QP CODE 243592</p>
         </div>
       </div>
@@ -322,7 +395,7 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
       </div>
 
       {/* Questions Table */}
-      <table className="w-full text-sm border-collapse" style={{ borderLeft: '2px solid #000000', borderRight: '2px solid #000000', borderBottom: '2px solid #000000', color: '#000000' }}>
+      <table className="w-full text-sm border-collapse" style={{ borderLeft: '2px solid #000000', borderRight: '2px solid #000000', borderBottom: '2px solid #000000', color: '#000000', tableLayout: 'fixed' }}>
         <thead>
           <tr className="font-bold" style={{ borderBottom: '2px solid #000000' }}>
             <td className="p-2 w-12 text-center" style={{ borderRight: '2px solid #000000' }}>Q.No.</td>
@@ -349,6 +422,17 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
                     <div className="max-w-none" style={{ color: '#000000' }}>
                       <Markdown>{q.text}</Markdown>
                     </div>
+                    {q.imageUrl && (
+                      <div className="mt-4 mb-4 flex justify-center">
+                        <img 
+                          src={q.imageUrl} 
+                          alt={`Diagram for question ${String.fromCharCode(97 + qIdx)}`}
+                          className="max-h-64 object-contain border border-gray-200 rounded p-2"
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                        />
+                      </div>
+                    )}
                     {q.options && (
                       <div className="grid grid-cols-2 gap-2 mt-2 ml-4">
                         {q.options.map((opt, oIdx) => (
@@ -420,7 +504,7 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
       <p className="text-xs font-bold mb-4 italic" style={{ color: '#000000' }}>Note: Assume suitable data wherever necessary.</p>
 
       {/* Questions Table */}
-      <table className="w-full text-sm border-collapse" style={{ border: '2px solid #000000', color: '#000000' }}>
+      <table className="w-full text-sm border-collapse" style={{ border: '2px solid #000000', color: '#000000', tableLayout: 'fixed' }}>
         <thead>
           <tr className="font-bold" style={{ borderBottom: '2px solid #000000' }}>
             <td className="p-2 w-12 text-center" style={{ borderRight: '2px solid #000000' }}>Q. No</td>
@@ -447,6 +531,17 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
                     <div className="max-w-none" style={{ color: '#000000' }}>
                       <Markdown>{q.text}</Markdown>
                     </div>
+                    {q.imageUrl && (
+                      <div className="mt-4 mb-4 flex justify-center">
+                        <img 
+                          src={q.imageUrl} 
+                          alt={`Diagram for question ${String.fromCharCode(97 + qIdx)}`}
+                          className="max-h-64 object-contain border border-gray-200 rounded p-2"
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                        />
+                      </div>
+                    )}
                     {showAnswers && (
                       <div className="mt-2 p-2 rounded text-xs" style={{ backgroundColor: '#f0fdf4', border: '1px solid #dcfce7', color: '#15803d' }}>
                         <span className="font-bold">Ans: </span>
@@ -623,21 +718,65 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
             </div>
 
             <form onSubmit={handleChatSubmit} className="p-4 border-t border-gray-100 bg-gray-50/50">
-              <div className="relative">
+              <AnimatePresence>
+                {imagePreview && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="mb-3 relative inline-block"
+                  >
+                    <img 
+                      src={imagePreview} 
+                      alt="Selected" 
+                      className="h-20 w-20 object-cover rounded-xl border-2 border-brand-purple shadow-sm" 
+                    />
+                    <button 
+                      type="button"
+                      onClick={clearImage}
+                      className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
+              <div className="relative flex items-center gap-2">
                 <input
-                  type="text"
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                  placeholder="Ask AI to change something..."
-                  className="w-full pl-4 pr-12 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-purple/20 focus:border-brand-purple outline-none transition-all text-sm"
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageSelect}
+                  accept="image/*"
+                  className="hidden"
                 />
                 <button
-                  type="submit"
-                  disabled={!chatMessage.trim() || chatLoading}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-brand-purple text-white rounded-lg disabled:opacity-50 hover:bg-brand-purple/90 transition-colors"
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`p-3 rounded-xl border border-gray-200 transition-all ${
+                    selectedImage ? 'bg-brand-purple/10 border-brand-purple text-brand-purple' : 'bg-white text-gray-400 hover:text-brand-purple hover:border-brand-purple/30'
+                  }`}
+                  title="Upload image"
                 >
-                  <Send className="h-4 w-4" />
+                  <ImageIcon className="h-5 w-5" />
                 </button>
+                
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    placeholder={selectedImage ? "Describe what to do with the image..." : "Ask AI to change something..."}
+                    className="w-full pl-4 pr-12 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-purple/20 focus:border-brand-purple outline-none transition-all text-sm"
+                  />
+                  <button
+                    type="submit"
+                    disabled={(!chatMessage.trim() && !selectedImage) || chatLoading}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-brand-purple text-white rounded-lg disabled:opacity-50 hover:bg-brand-purple/90 transition-colors"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </form>
           </motion.div>
