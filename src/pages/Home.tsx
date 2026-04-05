@@ -16,23 +16,20 @@ export default function Home({ user }: HomeProps) {
         <div className="blob top-1/2 -left-40 opacity-20"></div>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col lg:flex-row items-center gap-16">
-            <div className="lg:w-1/2 text-center lg:text-left">
+          <div className="flex flex-col items-center text-center">
+            <div className="max-w-3xl">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
               >
-                <span className="inline-block px-4 py-1.5 bg-brand-purple/10 text-brand-purple rounded-full text-sm font-bold mb-6 tracking-wide uppercase">
-                  AI-Powered Education
-                </span>
                 <h1 className="text-6xl md:text-7xl font-extrabold text-gray-900 leading-[1.1] mb-8 font-display">
                   Smart <span className="text-gradient">Question Paper</span> Generator
                 </h1>
-                <p className="text-xl text-gray-500 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0">
+                <p className="text-xl text-gray-500 mb-10 leading-relaxed mx-auto">
                   Automatically generate structured question papers based on syllabus, difficulty, and Bloom's Taxonomy levels in seconds.
                 </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                   <Link to={user ? "/generate" : "/login"} className="btn-gradient group">
                     Start Generating
                     <ArrowRight className="inline-block ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -44,59 +41,6 @@ export default function Home({ user }: HomeProps) {
                   )}
                 </div>
               </motion.div>
-            </div>
-            
-            <div className="lg:w-1/2 relative">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8, rotate: 5 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="relative z-10"
-              >
-                <div className="glass-card rounded-4xl p-4 shadow-2xl">
-                  <img 
-                    src="https://images.unsplash.com/photo-1454165833767-027ffea9e778?auto=format&fit=crop&q=80&w=1000" 
-                    alt="AI Education" 
-                    className="rounded-3xl shadow-inner w-full h-auto"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                
-                {/* Floating Elements */}
-                <motion.div 
-                  animate={{ y: [0, -20, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute -top-10 -right-10 glass-card p-6 rounded-3xl shadow-xl hidden md:block"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-green-500 p-2 rounded-lg">
-                      <CheckCircle className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-400 font-bold uppercase">Status</div>
-                      <div className="text-sm font-bold text-gray-900">Balanced Marks</div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <motion.div 
-                  animate={{ y: [0, 20, 0] }}
-                  transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                  className="absolute -bottom-10 -left-10 glass-card p-6 rounded-3xl shadow-xl hidden md:block"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-brand-purple p-2 rounded-lg">
-                      <Brain className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-400 font-bold uppercase">AI Engine</div>
-                      <div className="text-sm font-bold text-gray-900">Bloom's Taxonomy</div>
-                    </div>
-                  </div>
-                </motion.div>
-              </motion.div>
-              
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-br from-brand-purple/20 to-brand-pink/20 rounded-full -z-10 blur-3xl"></div>
             </div>
           </div>
         </div>

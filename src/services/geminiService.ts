@@ -28,7 +28,8 @@ export async function generateQuestionPaper(params: {
   department?: string;
   sectionsConfig: { name: string; numQuestions: number; marksPerQuestion: number }[];
 }): Promise<QuestionPaper> {
-  const model = "gemini-3.1-flash-lite-preview";
+  // Use a more powerful model for initial generation to ensure high quality and syllabus coverage
+  const model = "gemini-3.1-pro-preview";
   
   const sectionsPrompt = params.sectionsConfig.map(s => 
     `- ${s.name}: ${s.numQuestions} questions, ${s.marksPerQuestion} marks each.`
@@ -164,6 +165,7 @@ export async function modifyQuestionPaper(
   currentPaper: QuestionPaper,
   prompt: string
 ): Promise<QuestionPaper> {
+  // Use a faster model for the chatbot assistant to provide quick responses
   const model = "gemini-3.1-flash-lite-preview";
   
   const systemInstruction = `
