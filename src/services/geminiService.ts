@@ -1,7 +1,8 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { QuestionPaper, Difficulty, BloomLevel, QuestionType } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const apiKey = process.env.GEMINI_API_KEY || (import.meta.env.VITE_GEMINI_API_KEY as string) || "";
+const ai = new GoogleGenAI({ apiKey });
 
 export async function generateQuestionPaper(params: {
   syllabus: string;
@@ -28,8 +29,8 @@ export async function generateQuestionPaper(params: {
   department?: string;
   sectionsConfig: { name: string; numQuestions: number; marksPerQuestion: number }[];
 }): Promise<QuestionPaper> {
-  // Use a more powerful model for initial generation to ensure high quality and syllabus coverage
-  const model = "gemini-3.1-pro-preview";
+  // Use a capable model for initial generation
+  const model = "gemini-3-flash-preview";
   
   const sectionsPrompt = params.sectionsConfig.map(s => 
     `- ${s.name}: ${s.numQuestions} questions, ${s.marksPerQuestion} marks each.`
@@ -99,66 +100,74 @@ export async function generateQuestionPaper(params: {
     });
   }
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: [{ parts: contents }],
-    config: {
-      responseMimeType: "application/json",
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING },
-          courseOutcomes: { type: Type.ARRAY, items: { type: Type.STRING } },
-          sections: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING },
-                instructions: { type: Type.STRING },
-                questions: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      text: { type: Type.STRING },
-                      options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      correctAnswer: { type: Type.STRING },
-                      explanation: { type: Type.STRING },
-                      marks: { type: Type.NUMBER },
-                      topic: { type: Type.STRING },
-                      difficulty: { type: Type.STRING },
-                      bloomLevel: { type: Type.STRING },
-                      btLevel: { type: Type.STRING },
-                      coLevel: { type: Type.STRING },
-                      type: { type: Type.STRING }
-                    },
-                    required: ["text", "correctAnswer", "marks", "topic", "difficulty", "bloomLevel", "type", "btLevel", "coLevel"]
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts: contents }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            courseOutcomes: { type: Type.ARRAY, items: { type: Type.STRING } },
+            sections: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  instructions: { type: Type.STRING },
+                  questions: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        text: { type: Type.STRING },
+                        options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        correctAnswer: { type: Type.STRING },
+                        explanation: { type: Type.STRING },
+                        marks: { type: Type.NUMBER },
+                        topic: { type: Type.STRING },
+                        difficulty: { type: Type.STRING },
+                        bloomLevel: { type: Type.STRING },
+                        btLevel: { type: Type.STRING },
+                        coLevel: { type: Type.STRING },
+                        type: { type: Type.STRING }
+                      },
+                      required: ["text", "correctAnswer", "marks", "topic", "difficulty", "bloomLevel", "type", "btLevel", "coLevel"]
+                    }
                   }
-                }
-              },
-              required: ["name", "questions"]
+                },
+                required: ["name", "questions"]
+              }
             }
-          }
-        },
-        required: ["title", "sections", "courseOutcomes"]
-      }
-    },
-  });
+          },
+          required: ["title", "sections", "courseOutcomes"]
+        }
+      },
+    });
 
-  const result = JSON.parse(response.text || "{}");
-  
-  // Extract only the necessary paper data, excluding large file objects
-  const { syllabusFile: _s, referencePapers: _r, ...paperData } = params;
-  
-  return {
-    ...paperData,
-    userId: "", // To be filled by caller
-    sections: result.sections,
-    courseOutcomes: result.courseOutcomes,
-    createdAt: new Date().toISOString(),
-  };
+    if (!response.text) {
+      throw new Error("Empty response from AI model.");
+    }
+
+    const result = JSON.parse(response.text);
+    
+    // Extract only the necessary paper data, excluding large file objects
+    const { syllabusFile: _s, referencePapers: _r, ...paperData } = params;
+    
+    return {
+      ...paperData,
+      userId: "", // To be filled by caller
+      sections: result.sections,
+      courseOutcomes: result.courseOutcomes,
+      createdAt: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    console.error("Error in generateQuestionPaper:", error);
+    throw new Error(error.message || "Failed to generate question paper.");
+  }
 }
 
 export async function modifyQuestionPaper(
@@ -184,74 +193,83 @@ export async function modifyQuestionPaper(
     - Return ONLY the JSON object.
   `;
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: [{ parts: [{ text: systemInstruction }] }],
-    config: {
-      responseMimeType: "application/json",
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING },
-          collegeName: { type: Type.STRING },
-          examType: { type: Type.STRING },
-          monthYear: { type: Type.STRING },
-          branch: { type: Type.STRING },
-          semester: { type: Type.STRING },
-          subjectCode: { type: Type.STRING },
-          examDate: { type: Type.STRING },
-          timeDuration: { type: Type.STRING },
-          totalMarks: { type: Type.NUMBER },
-          numQuestions: { type: Type.NUMBER },
-          academicYear: { type: Type.STRING },
-          facultyName: { type: Type.STRING },
-          classDivSem: { type: Type.STRING },
-          classTest: { type: Type.STRING },
-          department: { type: Type.STRING },
-          courseOutcomes: { type: Type.ARRAY, items: { type: Type.STRING } },
-          sections: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING },
-                instructions: { type: Type.STRING },
-                questions: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      text: { type: Type.STRING },
-                      options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      correctAnswer: { type: Type.STRING },
-                      explanation: { type: Type.STRING },
-                      marks: { type: Type.NUMBER },
-                      topic: { type: Type.STRING },
-                      difficulty: { type: Type.STRING },
-                      bloomLevel: { type: Type.STRING },
-                      btLevel: { type: Type.STRING },
-                      coLevel: { type: Type.STRING },
-                      type: { type: Type.STRING }
-                    },
-                    required: ["text", "correctAnswer", "marks", "topic", "difficulty", "bloomLevel", "type", "btLevel", "coLevel"]
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts: [{ text: systemInstruction }] }],
+      config: {
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            collegeName: { type: Type.STRING },
+            examType: { type: Type.STRING },
+            monthYear: { type: Type.STRING },
+            branch: { type: Type.STRING },
+            semester: { type: Type.STRING },
+            subjectCode: { type: Type.STRING },
+            examDate: { type: Type.STRING },
+            timeDuration: { type: Type.STRING },
+            totalMarks: { type: Type.NUMBER },
+            numQuestions: { type: Type.NUMBER },
+            academicYear: { type: Type.STRING },
+            facultyName: { type: Type.STRING },
+            classDivSem: { type: Type.STRING },
+            classTest: { type: Type.STRING },
+            department: { type: Type.STRING },
+            courseOutcomes: { type: Type.ARRAY, items: { type: Type.STRING } },
+            sections: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  instructions: { type: Type.STRING },
+                  questions: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        text: { type: Type.STRING },
+                        options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        correctAnswer: { type: Type.STRING },
+                        explanation: { type: Type.STRING },
+                        marks: { type: Type.NUMBER },
+                        topic: { type: Type.STRING },
+                        difficulty: { type: Type.STRING },
+                        bloomLevel: { type: Type.STRING },
+                        btLevel: { type: Type.STRING },
+                        coLevel: { type: Type.STRING },
+                        type: { type: Type.STRING }
+                      },
+                      required: ["text", "correctAnswer", "marks", "topic", "difficulty", "bloomLevel", "type", "btLevel", "coLevel"]
+                    }
                   }
-                }
-              },
-              required: ["name", "questions"]
+                },
+                required: ["name", "questions"]
+              }
             }
-          }
-        },
-        required: ["title", "sections", "totalMarks"]
-      }
-    },
-  });
+          },
+          required: ["title", "sections", "totalMarks"]
+        }
+      },
+    });
 
-  const result = JSON.parse(response.text || "{}");
-  
-  return {
-    ...currentPaper,
-    ...result,
-    createdAt: currentPaper.createdAt, // Keep original creation date
-  };
+    if (!response.text) {
+      throw new Error("Empty response from AI assistant.");
+    }
+
+    const result = JSON.parse(response.text);
+    
+    return {
+      ...currentPaper,
+      ...result,
+      createdAt: currentPaper.createdAt, // Keep original creation date
+    };
+  } catch (error: any) {
+    console.error("Error in modifyQuestionPaper:", error);
+    throw new Error(error.message || "Failed to modify question paper.");
+  }
 }

@@ -165,7 +165,10 @@ export default function GeneratePaper({ user }: GeneratePaperProps) {
       navigate(`/preview/${docRef.id}`);
     } catch (err: any) {
       console.error('Generation error:', err);
-      setError('Failed to generate question paper. Please try again.');
+      const errorMessage = err.message || 'Failed to generate question paper. Please try again.';
+      setError(errorMessage.includes('API_KEY') 
+        ? 'Gemini API Key is missing or invalid. Please check your environment variables.' 
+        : errorMessage);
     } finally {
       setLoading(false);
     }
