@@ -349,7 +349,7 @@ export default function PreviewPaper({ user }: PreviewPaperProps) {
     }
   };
 
-  const PCE_LOGO = "https://pce.ac.in/wp-content/uploads/2020/01/logo.png";
+  const PCE_LOGO = "/pillai_logo.webp";
 
   const Template60 = ({ paper }: { paper: QuestionPaper }) => (
     <div className="p-12 font-serif" style={{ minHeight: '297mm', width: '800px', backgroundColor: '#ffffff', color: '#000000' }}>
