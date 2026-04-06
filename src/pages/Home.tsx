@@ -38,7 +38,8 @@ export default function Home({ user }: HomeProps) {
                     <Link to="/login" className="btn-dark">
                       Sign In
                     </Link>
-                  )}
+                  )
+                  }
                 </div>
               </motion.div>
             </div>
@@ -57,12 +58,14 @@ export default function Home({ user }: HomeProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            //bloom taxonomy section added
             <ServiceCard 
               icon={<Layout className="h-8 w-8 text-white" />}
               title="Syllabus Analysis"
               description="Upload your syllabus and let AI extract key topics for comprehensive coverage."
               color="bg-brand-purple"
             />
+            
             <ServiceCard 
               icon={<Brain className="h-8 w-8 text-white" />}
               title="Bloom's Taxonomy"
