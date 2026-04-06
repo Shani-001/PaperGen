@@ -21,7 +21,8 @@ export default function GeneratePaper({ user }: GeneratePaperProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-
+  
+//Storing the entire form data in one object.
   const [formData, setFormData] = useState({
     title: '',
     collegeName: '',
