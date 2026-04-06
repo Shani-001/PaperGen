@@ -28,7 +28,7 @@ export default function App() {
       </div>
     );
   }
-
+//page structure and routing logic, with authentication checks to ensure users are directed appropriately based on their login status.
   return (
     <Router>
       <Layout user={user}>
