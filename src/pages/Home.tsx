@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 interface HomeProps {
   user: User | null;
 }
-
+//home page design  
 export default function Home({ user }: HomeProps) {
   return (
     <div className="bg-white overflow-hidden">
