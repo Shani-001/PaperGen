@@ -58,7 +58,6 @@ export default function Home({ user }: HomeProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            //bloom taxonomy section added
             <ServiceCard 
               icon={<Layout className="h-8 w-8 text-white" />}
               title="Syllabus Analysis"
