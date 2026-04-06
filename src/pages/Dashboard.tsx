@@ -7,6 +7,7 @@ import { QuestionPaper } from '../types';
 import { FileText, Plus, Trash2, Eye, Calendar, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
 
+//this is where props are added of dasboard 
 interface DashboardProps {
   user: User;
 }
