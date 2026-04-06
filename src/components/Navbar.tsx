@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { User, signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { FileText, LogOut, LayoutDashboard, PlusCircle, Menu, X, Home, Sparkles } from 'lucide-react';
+import { FaUser } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface NavbarProps {
@@ -25,6 +26,8 @@ export default function Navbar({ user }: NavbarProps) {
   };
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+  const [imageError, setImageError] = useState(false);
 
   return (
     <>
@@ -64,8 +67,27 @@ export default function Navbar({ user }: NavbarProps) {
                     >
                       <LogOut className="h-5 w-5" />
                     </button>
-                    <Link to="/dashboard" className="btn-dark !px-6 !py-2.5 !text-sm">
-                      My Account
+                    <Link 
+                      to="/dashboard" 
+                      className="relative flex items-center justify-center h-11 w-11 rounded-full group/user bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-100 shadow-sm"
+                      title={user.displayName || user.email || 'Account'}
+                    >
+                      {user.photoURL && !imageError ? (
+                        <div className="h-full w-full rounded-full border-2 border-brand-purple/20 overflow-hidden group-hover/user:border-brand-purple transition-all ring-0 group-hover/user:ring-4 ring-brand-purple/10">
+                          <img 
+                            src={user.photoURL} 
+                            alt="" 
+                            onError={() => setImageError(true)}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-full w-full rounded-full bg-gradient-to-br from-brand-purple to-brand-pink flex items-center justify-center text-white scale-[1.02] transition-transform group-hover/user:scale-105 shadow-inner">
+                          <span className="text-lg font-extrabold tracking-tighter">
+                            {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
                     </Link>
                   </div>
                   
@@ -136,8 +158,25 @@ export default function Navbar({ user }: NavbarProps) {
                 
                 {user ? (
                   <>
-                    <MobileNavLink to="/dashboard" icon={<LayoutDashboard className="h-5 w-5" />} onClick={() => setIsMenuOpen(false)}>
-                      Dashboard
+                     <MobileNavLink 
+                      to="/dashboard" 
+                      icon={user.photoURL && !imageError ? (
+                        <img 
+                          src={user.photoURL} 
+                          alt="" 
+                          onError={() => setImageError(true)}
+                          className="h-8 w-8 rounded-full border border-brand-purple/20 object-cover"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-brand-purple/10 flex items-center justify-center border border-brand-purple/20">
+                          <span className="text-brand-purple font-bold text-xs">
+                            {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )} 
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Account
                     </MobileNavLink>
                     <MobileNavLink to="/generate" icon={<PlusCircle className="h-5 w-5" />} onClick={() => setIsMenuOpen(false)}>
                       Generate Paper
