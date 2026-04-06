@@ -12,6 +12,7 @@ interface GeneratePaperProps {
   user: User;
 }
 
+//Questions Made Based On Bloom's Taxonomy 
 const BLOOM_LEVELS: BloomLevel[] = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create'];
 const QUESTION_TYPES: QuestionType[] = ['MCQ', 'Descriptive', 'Case-based'];
 
