@@ -93,7 +93,7 @@ export default function GeneratePaper({ user }: GeneratePaperProps) {
       }
     });
   };
-
+//added Section of FormData
   const addSection = () => {
     setFormData(prev => ({
       ...prev,
